@@ -145,7 +145,7 @@ def _morph_graph_to_or_from_center(to_center: bool,
                                    graph: GraphT,
                                    vertex_filter: Callable[[VT], bool],
                                    scene: GraphScene,
-                                   center: tuple[int, int],
+                                   center: tuple[float, float],
                                    duration: int,
                                    ease: QEasingCurve) -> QAbstractAnimation:
     """Morphs a graph to or from the centre by moving the vertices."""
@@ -168,7 +168,7 @@ def _morph_graph_to_or_from_center(to_center: bool,
 def morph_graph_to_center(graph: GraphT,
                           vertex_filter: Callable[[VT], bool],
                           scene: GraphScene,
-                          center: tuple[int, int],
+                          center: tuple[float, float],
                           duration: int,
                           ease: QEasingCurve) -> QAbstractAnimation:
     return _morph_graph_to_or_from_center(True, graph, vertex_filter, scene, center, duration, ease)
@@ -177,7 +177,7 @@ def morph_graph_to_center(graph: GraphT,
 def morph_graph_from_center(graph: GraphT,
                             vertex_filter: Callable[[VT], bool],
                             scene: GraphScene,
-                            center: tuple[int, int],
+                            center: tuple[float, float],
                             duration: int,
                             ease: QEasingCurve) -> QAbstractAnimation:
     return _morph_graph_to_or_from_center(False, graph, vertex_filter, scene, center, duration, ease)

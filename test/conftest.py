@@ -18,7 +18,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 
 import pytest
 
@@ -30,8 +30,13 @@ from PySide6.QtCore import QSettings  # noqa: E402
 def _probe_default_path(fmt: QSettings.Format) -> str:
     """Probe Qt's default UserScope base path for ``fmt`` via a throwaway QSettings.
 
-    Accepts the ``<base>/<org>/<app>.ext`` and ``<base>/<app>.ext`` layouts;
-    raises on anything else rather than silently restoring a wrong path.
+    Accepts three layouts and raises on anything else rather than silently
+    restoring a wrong path:
+
+    * ``<base>/<org>/<app>.ext`` (Linux, nested) -> ``<base>``
+    * ``<base>/<app>.ext`` (Linux, flat) -> ``<base>``
+    * ``<base>/<reverse-domain>.<app>.plist`` (macOS NativeFormat, e.g.
+      ``com.org.app.plist``) -> ``<base>``
     """
     probe_org = "zxlive-conftest-probe-org"
     probe_app = "zxlive-conftest-probe-app"
@@ -41,6 +46,12 @@ def _probe_default_path(fmt: QSettings.Format) -> str:
     if probe_path.stem == probe_app:
         if probe_path.parent.name == probe_org:
             return str(probe_path.parent.parent)
+        return str(probe_path.parent)
+
+    # macOS NativeFormat stores ``~/Library/Preferences/com.org.app.plist``,
+    # where the reverse-domain stem ends with the application name and the
+    # base path is simply the containing directory.
+    if probe_path.stem.endswith(probe_app):
         return str(probe_path.parent)
 
     raise RuntimeError(
@@ -68,6 +79,31 @@ def _set_qsettings_paths(path: str) -> None:
 
 QSettings.setDefaultFormat(QSettings.Format.IniFormat)
 _set_qsettings_paths(_QSETTINGS_TMPDIR.name)
+
+
+# On macOS, ``QSettings(org, app)`` uses ``NativeFormat`` (CFPreferences),
+# which ignores both ``setDefaultFormat`` and ``setPath`` -- so the sandbox
+# above never applies and tests would read and pollute the user's real
+# preferences. Route the org/app and default constructors through the
+# redirectable ``IniFormat`` instead, so the per-test sandbox holds on every
+# platform. Subclassing (rather than swapping in a factory function) keeps
+# ``isinstance`` checks, ``QSettings.Format``, and the rest of the API intact.
+import PySide6.QtCore as _QtCore  # noqa: E402
+
+
+class _SandboxedQSettings(QSettings):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        if not args and not kwargs:
+            super().__init__(QSettings.Format.IniFormat,
+                             QSettings.Scope.UserScope, "zxlive", "zxlive")
+        elif len(args) == 2 and all(isinstance(a, str) for a in args):
+            super().__init__(QSettings.Format.IniFormat,
+                             QSettings.Scope.UserScope, args[0], args[1])
+        else:
+            super().__init__(*args, **kwargs)
+
+
+setattr(_QtCore, "QSettings", _SandboxedQSettings)
 
 
 _exit_status: int = 0

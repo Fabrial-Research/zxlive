@@ -6,7 +6,7 @@ from pyzx.rewrite import Rewrite
 from pyzx.utils import EdgeType, VertexType
 
 import zxlive.rewrite_action as rewrite_action_module
-from zxlive.common import new_graph
+from zxlive.common import GraphT, new_graph
 from zxlive.rewrite_action import RewriteAction
 from zxlive.rewrite_data import MATCH_DOUBLE, MATCH_SINGLE
 
@@ -72,7 +72,7 @@ def _patch_rewrite_side_effects(monkeypatch: Any) -> None:
     monkeypatch.setattr(rewrite_action_module, "make_animation", lambda *_args: (None, None))
 
 
-def _make_chain_graph() -> tuple[object, int, int, tuple[int, int, EdgeType], tuple[int, int, EdgeType]]:
+def _make_chain_graph() -> tuple[GraphT, int, int, tuple[int, int, EdgeType], tuple[int, int, EdgeType]]:
     g = new_graph()
     inp = g.add_vertex(VertexType.BOUNDARY, qubit=0, row=0)
     z1 = g.add_vertex(VertexType.Z, qubit=0, row=1)
