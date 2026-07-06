@@ -17,3 +17,4 @@ dist
 .ipynb_checkpoints
 *.code-workspace
 doc/_build/*
+build/
