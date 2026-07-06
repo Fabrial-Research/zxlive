@@ -80,7 +80,7 @@ class RewriteAction:
         )
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def do_rewrite(self, panel: ProofPanel) -> None:  # noqa: PLR0912
         if not self.enabled:
             return
@@ -155,7 +155,7 @@ class RewriteAction:
         panel.undo_stack.push(cmd, anim_before=anim_before, anim_after=anim_after)
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def update_active(self, g: GraphT, verts: list[VT], edges: list[ET]) -> None:  # noqa: PLR0912
         if self.copy_first:
             g = copy.deepcopy(g)

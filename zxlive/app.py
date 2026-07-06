@@ -15,13 +15,16 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
-from typing import Optional, cast
+import traceback
+from types import TracebackType
+from typing import Optional, Type, cast
 
 from PySide6.QtCore import QCommandLineParser, Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from .mainwindow import MainWindow
 from .common import get_data, GraphT, get_settings_value
@@ -162,6 +165,34 @@ def get_version() -> str:
         return '1.0.0'  # TODO: Update this for new releases
 
 
+def _install_exception_hook() -> None:
+    """Install a global hook so unhandled exceptions are logged and shown to the
+    user instead of silently tearing down (PySide6 routes uncaught exceptions in
+    slots through ``sys.excepthook``, whose default just prints and aborts)."""
+    def hook(exc_type: Type[BaseException], exc_value: BaseException,
+             exc_tb: Optional[TracebackType]) -> None:
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_tb)
+            return
+        logging.getLogger("zxlive").error(
+            "Unhandled exception", exc_info=(exc_type, exc_value, exc_tb))
+        try:
+            if QApplication.instance() is not None:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Icon.Critical)
+                msg.setWindowTitle("ZXLive - Unexpected Error")
+                msg.setText("An unexpected error occurred.")
+                msg.setInformativeText(f"{exc_type.__name__}: {exc_value}")
+                msg.setDetailedText(
+                    "".join(traceback.format_exception(exc_type, exc_value, exc_tb)))
+                msg.exec()
+        except Exception:
+            # Never let the exception hook itself raise.
+            pass
+
+    sys.excepthook = hook
+
+
 def main() -> None:
     """Main entry point for ZXLive as a standalone app."""
     # Configure Windows theme based on settings before creating QApplication
@@ -174,6 +205,7 @@ def main() -> None:
         # For "system", don't set the environment variable to let Qt auto-detect
 
     zxl = ZXLive()
+    _install_exception_hook()
     if sys.platform == "darwin":  # 'darwin' is macOS
         if dark_mode_setting == "dark":
             zxl.styleHints().setColorScheme(Qt.ColorScheme.Dark)

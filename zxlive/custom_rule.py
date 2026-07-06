@@ -43,7 +43,7 @@ class CustomRule(RewriteSimpGraph[VT, ET]):
                 [v for v in self.lhs_graph_nx.nodes() if self.lhs_graph_nx.nodes()[v]['type'] != VertexType.BOUNDARY]))
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def applier(self, graph: BaseGraph[VT, ET], vertices: list[VT]) -> bool:  # noqa: PLR0912
         assert isinstance(graph, GraphT)
         if self.is_rewrite_unfusable:
@@ -407,7 +407,7 @@ def get_vertex_positions(graph: GraphT, rhs_graph: nx.MultiGraph, boundary_verte
 
 
 # TODO: Fix code complexity
-# noqa: complexipy
+# complexipy: ignore
 def check_rule(rule: CustomRule) -> None:
     rule.lhs_graph.auto_detect_io()
     rule.rhs_graph.auto_detect_io()

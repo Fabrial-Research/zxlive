@@ -380,6 +380,9 @@ class MainWindow(QMainWindow):
 
         # save the shape/size of this window on close
         self.settings.setValue("main_window_geometry", self.saveGeometry())
+        # Flush to disk now: Qt would otherwise sync lazily, so a crash during
+        # shutdown could drop the session state and window geometry saved above.
+        self.settings.sync()
 
         e.accept()
 
@@ -423,11 +426,14 @@ class MainWindow(QMainWindow):
             }
 
             self.settings.setValue("session_state", json.dumps(session_data))
+            # Flush now so the periodic autosave is durable across a crash, not
+            # just on a clean Qt shutdown.
+            self.settings.sync()
         except Exception as e:
             logging.warning(f"Failed to save session state: {e}")
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def _restore_session_state(self) -> bool:  # noqa: PLR0912
         """Restore previously saved tabs. Returns True if any tabs were restored."""
         # Check if user wants to restore session
@@ -763,25 +769,43 @@ class MainWindow(QMainWindow):
             mime.setData(self.CLIPBOARD_MIME, QByteArray(payload))
         QApplication.clipboard().setMimeData(mime)
 
+    def _read_internal_clipboard_graph(self, mime: QMimeData) -> Optional[GraphT]:
+        """Parse a graph from ZXLive's internal clipboard MIME payload, or return
+        None if it is absent or malformed (so the caller can fall back to TikZ)."""
+        try:
+            raw = bytes(mime.data(self.CLIPBOARD_MIME).data())
+            payload = json.loads(raw.decode("utf-8"))
+            graph_json = payload.get("graph_json")
+            if isinstance(graph_json, str):  # type: ignore
+                g = GraphT.from_json(graph_json)
+                assert isinstance(g, GraphT)  # type: ignore[misc]
+                g.rebind_variables_to_registry()
+                g.set_auto_simplify(False)
+                return g
+        except Exception:
+            pass
+        return None
+
+    def _clipboard_tikz_text(self) -> str:
+        """Return clipboard text, falling back to pyperclip. `pyperclip` raises on
+        Linux when no clipboard backend (xclip/xsel/wl-clipboard) is installed;
+        treat that as an empty clipboard rather than crashing the paste action."""
+        tikz = QApplication.clipboard().text()
+        if not tikz:
+            try:
+                tikz = pyperclip.paste()
+            except pyperclip.PyperclipException:
+                tikz = ""
+        return tikz
+
     def _read_graph_from_system_clipboard(self, include_internal: bool = True) -> Optional[GraphT]:
         mime = QApplication.clipboard().mimeData()
         if include_internal and mime is not None and mime.hasFormat(self.CLIPBOARD_MIME):
-            try:
-                raw = bytes(mime.data(self.CLIPBOARD_MIME).data())
-                payload = json.loads(raw.decode("utf-8"))
-                graph_json = payload.get("graph_json")
-                if isinstance(graph_json, str):  # type: ignore
-                    g = GraphT.from_json(graph_json)
-                    assert isinstance(g, GraphT)  # type: ignore[misc]
-                    g.rebind_variables_to_registry()
-                    g.set_auto_simplify(False)
-                    return g
-            except Exception:
-                pass
+            g = self._read_internal_clipboard_graph(mime)
+            if g is not None:
+                return g
 
-        tikz = QApplication.clipboard().text()
-        if not tikz:
-            tikz = pyperclip.paste()
+        tikz = self._clipboard_tikz_text()
         if not tikz:
             return None
         try:

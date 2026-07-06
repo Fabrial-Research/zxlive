@@ -309,7 +309,7 @@ class ProofPanel(BasePanel):
         return True
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def _magic_slice(self, trace: WandTrace) -> bool:  # noqa: PLR0912
         def cross(a: QPointF, b: QPointF) -> float:
             return float(a.y() * b.x() - a.x() * b.y())

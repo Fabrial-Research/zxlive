@@ -94,12 +94,6 @@ ignore = [
     "E501",
     "E721", # False positive: triggers on .type() method calls, not just type() builtin
 ]
-# `complexipy` is a separate complexity linter that reads `# noqa: complexipy`
-# directives from the source. Declaring it external stops ruff from flagging
-# those directives as invalid while leaving them functional for complexipy.
-external = [
-    "complexipy",
-]
 
 [tool.ruff.lint.per-file-ignores]
 "test/*" = ["F401"]

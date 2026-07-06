@@ -139,7 +139,7 @@ class BasePanel(QWidget):
         self.graph_view.update_font()
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def show_matrix(self) -> None:
         """Show the matrix of the current graph in a dialog."""
         from PySide6.QtCore import Qt

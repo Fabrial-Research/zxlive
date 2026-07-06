@@ -19,6 +19,7 @@ import math
 
 from typing import Optional, Set, Any, TYPE_CHECKING, Union
 
+import shiboken6
 from PySide6.QtCore import Qt, QPointF, QVariantAnimation, QAbstractAnimation, QRectF
 from PySide6.QtGui import QPen, QBrush, QPainter, QColor, QFont, QPainterPath
 from PySide6.QtSvg import QSvgRenderer
@@ -598,6 +599,12 @@ class VItemAnimation(QVariantAnimation):
         # Returns ``None`` if the vertex is no longer in the scene.
         if self._it is None and self.scene is not None and self.v is not None:
             self._it = self.scene.vertex_map.get(self.v)
+        # The VItem's underlying C++ object may have been deleted (e.g. the
+        # vertex was removed by an undo/redo while this animation was still
+        # running). Treat that as "gone" so callbacks don't touch a dead object
+        # and raise ``RuntimeError``.
+        if self._it is not None and not shiboken6.isValid(self._it):
+            return None
         return self._it
 
     def _on_state_changed(self, state: QAbstractAnimation.State) -> None:

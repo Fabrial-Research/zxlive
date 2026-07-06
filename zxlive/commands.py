@@ -145,7 +145,10 @@ class UpdateGraph(BaseCommand):
 
     def redo(self) -> None:
         self.old_g = self.graph_view.graph_scene.g
-        if not self.old_selected:
+        # Capture the selection only on the first redo. Use `is None` (not a
+        # falsy check) so an *empty* selection is preserved across undo/redo
+        # instead of being re-captured from the live scene on a later redo.
+        if self.old_selected is None:
             self.old_selected = set(self.graph_view.graph_scene.selected_vertices)
         self.g = self.new_g
         self.update_graph_view(True)
@@ -185,7 +188,7 @@ class ChangeNodeType(BaseCommand):
         self.update_graph_view()
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def redo(self) -> None:
         self._old_w_info = self._old_w_info or {}
         self._new_w_inputs = self._new_w_inputs or []
@@ -421,7 +424,7 @@ class MergeNodes(BaseCommand):
         self.update_graph_view()
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def redo(self) -> None:
         self._old_g = copy.deepcopy(self.g)
         if len(self.vertices_to_merge) < 2:

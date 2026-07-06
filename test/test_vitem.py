@@ -203,6 +203,32 @@ def test_vitem_animation_handles_missing_vertex(qtbot: QtBot) -> None:
         anim.start()
 
 
+def test_vitem_animation_handles_deleted_item(qtbot: QtBot) -> None:
+    """A VItemAnimation built from a direct VItem whose underlying C++ object was
+    deleted (e.g. the vertex was removed by an undo/redo while the animation was
+    still running) must no-op rather than raise ``RuntimeError``."""
+    import shiboken6
+    g = new_graph()
+    v = g.add_vertex(VertexType.Z, qubit=0, row=0)
+    scene = GraphScene()
+    scene.set_graph(g)
+    vitem = scene.vertex_map[v]
+
+    anim = VItemAnimation(vitem, VItem.Properties.Scale)
+    anim.setStartValue(1.0)
+    anim.setEndValue(2.0)
+    anim.setDuration(50)
+
+    scene.removeItem(vitem)
+    shiboken6.delete(vitem)
+    assert not shiboken6.isValid(vitem)
+
+    assert anim.it is None
+    anim._on_state_changed(QAbstractAnimation.State.Running)
+    anim._on_state_changed(QAbstractAnimation.State.Stopped)
+    anim.updateCurrentValue(1.5)  # must not raise
+
+
 def test_eitem_animation_handles_missing_edge(qtbot: QtBot) -> None:
     """An EItemAnimation whose target edge is absent from ``edge_map`` must
     no-op rather than raise. Regression test for #482."""

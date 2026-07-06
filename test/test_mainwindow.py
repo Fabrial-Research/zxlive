@@ -734,3 +734,97 @@ def test_proof_cleanup_before_close(app: MainWindow, qtbot: QtBot) -> None:
     qtbot.mouseClick(app.active_panel.start_derivation, QtCore.Qt.MouseButton.LeftButton)
     app.select_all_action.trigger()
     app.close_action.trigger()
+
+
+def test_update_graph_preserves_empty_selection(app: MainWindow) -> None:
+    # Regression: `UpdateGraph.redo` used a falsy check (`if not self.old_selected`)
+    # that could not distinguish "selection not yet captured" (None) from "captured
+    # as empty" (set()). Starting from an empty selection, a later redo re-captured
+    # the live selection, so a following undo restored the wrong set.
+    from zxlive.commands import UpdateGraph
+    panel = app.active_panel
+    assert isinstance(panel, GraphEditPanel)
+    scene = panel.graph_scene
+    scene.select_vertices([])  # ensure no selection
+    assert set(scene.selected_vertices) == set()
+
+    v = next(iter(scene.g.vertices()))
+    cmd = UpdateGraph(panel.graph_view, copy.deepcopy(scene.g))
+
+    cmd.redo()
+    assert cmd.old_selected == set()  # captured empty on the first redo
+    cmd.undo()
+
+    # The user selects a vertex before the command is redone again.
+    scene.select_vertices([v])
+    cmd.redo()
+    # The originally-empty selection must be kept, not re-captured from the scene.
+    assert cmd.old_selected == set()
+
+
+def test_clipboard_paste_survives_missing_backend(app: MainWindow, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression: `pyperclip.paste()` was called outside the try/except, so on a
+    # Linux host with no clipboard backend (xclip/xsel/wl-clipboard) the paste
+    # action crashed. It must be treated as an empty clipboard instead.
+    import pyperclip
+    from PySide6.QtWidgets import QApplication
+
+    QApplication.clipboard().clear()
+
+    def boom() -> str:
+        raise pyperclip.PyperclipException("Pyperclip could not find a copy/paste mechanism")
+
+    monkeypatch.setattr(pyperclip, "paste", boom)
+    assert app._clipboard_tikz_text() == ""
+    assert app._read_graph_from_system_clipboard() is None
+
+
+def test_exception_hook_logs_and_shows_dialog(
+    app: MainWindow, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # The global hook must surface unhandled exceptions (log + dialog) instead of
+    # letting them tear the app down silently. `QMessageBox.exec` is patched so the
+    # dialog doesn't block the test.
+    import sys
+    from PySide6.QtWidgets import QMessageBox
+    from zxlive import app as app_module
+
+    shown: list[str] = []
+    monkeypatch.setattr(QMessageBox, "exec", lambda self: shown.append(self.informativeText()))
+
+    original_hook = sys.excepthook
+    try:
+        app_module._install_exception_hook()
+        assert sys.excepthook is not original_hook
+        try:
+            raise ValueError("boom")
+        except ValueError:
+            exc_type, exc_value, exc_tb = sys.exc_info()
+        assert exc_type is not None and exc_value is not None
+        with caplog.at_level("ERROR", logger="zxlive"):
+            sys.excepthook(exc_type, exc_value, exc_tb)  # must not raise
+        assert any("Unhandled exception" in r.message for r in caplog.records)
+        assert shown and "ValueError: boom" in shown[0]
+    finally:
+        sys.excepthook = original_hook
+
+
+def test_exception_hook_delegates_keyboard_interrupt(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Ctrl-C must reach the default hook, not be swallowed by our handler.
+    import sys
+    from zxlive import app as app_module
+
+    called: list[object] = []
+    monkeypatch.setattr(sys, "__excepthook__", lambda *a: called.append(a))
+    original_hook = sys.excepthook
+    try:
+        app_module._install_exception_hook()
+        try:
+            raise KeyboardInterrupt()
+        except KeyboardInterrupt:
+            exc_type, exc_value, exc_tb = sys.exc_info()
+        assert exc_type is not None and exc_value is not None
+        sys.excepthook(exc_type, exc_value, exc_tb)
+        assert called, "KeyboardInterrupt should delegate to the default excepthook"
+    finally:
+        sys.excepthook = original_hook

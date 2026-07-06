@@ -5,6 +5,8 @@ import random
 from collections import Counter
 from typing import Optional, Callable, TYPE_CHECKING
 
+import shiboken6
+
 from PySide6.QtCore import QEasingCurve, QPointF, QAbstractAnimation, \
     QParallelAnimationGroup
 from PySide6.QtGui import QUndoStack, QUndoCommand
@@ -234,6 +236,10 @@ def fuse(dragged: VItem, target: VItem, meet_halfway: bool = False) -> QAbstract
                                  ease=QEasingCurve(QEasingCurve.Type.InBack)))
 
     def set_z(state: QAbstractAnimation.State) -> None:
+        # `target`'s C++ object may already be deleted if the animation is
+        # stopped as part of an undo/redo that removed the vertex.
+        if not shiboken6.isValid(target):
+            return
         if state == QAbstractAnimation.State.Running:
             target.setZValue(VITEM_SELECTED_Z + 1)
         elif state == QAbstractAnimation.State.Stopped:
@@ -307,7 +313,7 @@ def unfuse(before: GraphT, after: GraphT, src: VT, scene: GraphScene) -> QAbstra
 
 
 # TODO: Fix code complexity
-# noqa: complexipy
+# complexipy: ignore
 def make_animation(self: RewriteAction, panel: ProofPanel, g: GraphT, matches: list, rem_verts: list[VT]) -> tuple:  # noqa: PLR0912
     if not get_settings_value("rewrite-animations", bool):
         return None, None

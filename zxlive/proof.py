@@ -386,7 +386,7 @@ class ProofStepItemDelegate(QStyledItemDelegate):
     editor_border_light = QColor(128, 176, 224)
 
     # TODO: Fix code complexity
-    # noqa: complexipy
+    # complexipy: ignore
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: Union[QModelIndex, QPersistentModelIndex]) -> None:  # noqa: PLR0912
         painter.save()
         # Draw background

@@ -119,7 +119,7 @@ def create_circuit_dialog(explanation: str, example: str, parent: QWidget) -> Op
 
 
 # TODO: Fix code complexity
-# noqa: complexipy
+# complexipy: ignore
 def import_diagram_from_file(file_path: str, selected_filter: str = FileFormat.All.filter, parent: Optional[QWidget] = None) -> \
         Optional[ImportGraphOutput | ImportProofOutput | ImportRuleOutput]:  # noqa: PLR0912
     """Imports a diagram from a given file path.

@@ -376,6 +376,12 @@ class EditGraphScene(GraphScene):
             self.add_vertex(e)
         else:
             e.ignore()
+        # Clean up a dangling drag item that `add_edge` didn't consume (e.g. the
+        # tool was switched mid-drag), so it doesn't leak in the scene and get
+        # orphaned by the next drag.
+        if self._drag is not None:
+            self.removeItem(self._drag)
+            self._drag = None
         self._is_mouse_pressed = False
         self._is_dragging = False
 
