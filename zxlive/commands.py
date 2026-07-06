@@ -11,7 +11,8 @@ from PySide6.QtGui import QUndoCommand
 from PySide6.QtWidgets import QListView
 from pyzx.graph.diff import GraphDiff
 from pyzx.symbolic import Poly
-from pyzx.utils import EdgeType, VertexType, get_w_partner, vertex_is_w, get_w_io, get_z_box_label, set_z_box_label
+from pyzx.utils import EdgeType, VertexType, get_w_partner, vertex_is_w, get_w_io, get_z_box_label, set_z_box_label, \
+    vertex_is_triangle
 
 from .common import ET, VT, W_INPUT_OFFSET, GraphT
 from .settings import display_setting
@@ -201,6 +202,11 @@ class ChangeNodeType(BaseCommand):
                 w_in, w_out = get_w_io(self.g, v)
                 self.vs.discard(w_in)
                 self.vs.add(w_out)
+            elif vertex_is_triangle(self.g.type(v)):
+                # Triangle node types cannot be changed independently — doing so
+                # would orphan the partner and break get_triangle_partner.
+                # Treat any type-change on a triangle vertex as a no-op.
+                self.vs.discard(v)
         self.vs = list(self.vs)
         self._old_vtys = [self.g.type(v) for v in self.vs]
         if self.vty == VertexType.W_OUTPUT:
@@ -331,6 +337,31 @@ class AddWNode(BaseCommand):
         x = round(self.x * display_setting.SNAP_DIVISION) / display_setting.SNAP_DIVISION
         self._added_input_vert = self.g.add_vertex(VertexType.W_INPUT, y - W_INPUT_OFFSET, self.x)
         self._added_output_vert = self.g.add_vertex(VertexType.W_OUTPUT, y, x)
+        self.g.add_edge((self._added_input_vert, self._added_output_vert), EdgeType.W_IO)
+        self.update_graph_view()
+
+
+@dataclass
+class AddTriangleNode(BaseCommand):
+    """Adds a new triangle node (tip + body pair) at a given position."""
+    x: float
+    y: float
+
+    _added_input_vert: Optional[VT] = field(default=None, init=False)
+    _added_output_vert: Optional[VT] = field(default=None, init=False)
+
+    def undo(self) -> None:
+        assert self._added_input_vert is not None
+        assert self._added_output_vert is not None
+        self.g.remove_vertex(self._added_input_vert)
+        self.g.remove_vertex(self._added_output_vert)
+        self.update_graph_view()
+
+    def redo(self) -> None:
+        y = round(self.y * display_setting.SNAP_DIVISION) / display_setting.SNAP_DIVISION
+        x = round(self.x * display_setting.SNAP_DIVISION) / display_setting.SNAP_DIVISION
+        self._added_input_vert = self.g.add_vertex(VertexType.TRIANGLE_INPUT, y - W_INPUT_OFFSET, self.x)
+        self._added_output_vert = self.g.add_vertex(VertexType.TRIANGLE_OUTPUT, y, x)
         self.g.add_edge((self._added_input_vert, self._added_output_vert), EdgeType.W_IO)
         self.update_graph_view()
 

@@ -14,12 +14,13 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QGridLayout, QHB
                                QListWidgetItem, QMenu, QMessageBox, QPushButton, QScrollArea, QSizePolicy,
                                QSpacerItem, QSplitter, QToolButton, QVBoxLayout, QWidget)
 from pyzx import EdgeType, VertexType
-from pyzx.utils import get_w_partner, vertex_is_w, phase_to_s, get_z_box_label
+from pyzx.utils import get_w_partner, vertex_is_w, phase_to_s, get_z_box_label, \
+    vertex_is_triangle, get_triangle_partner
 from pyzx.graph.jsonparser import string_to_phase
 from zxlive.sfx import SFXEnum
 
 from .base_panel import BasePanel, ToolbarSection
-from .commands import (BaseCommand, AddEdge, AddEdges, AddNode, AddNodeSnapped, AddWNode, ChangeEdgeColor, ChangeEdgeCurve,
+from .commands import (BaseCommand, AddEdge, AddEdges, AddNode, AddNodeSnapped, AddWNode, AddTriangleNode, ChangeEdgeColor, ChangeEdgeCurve,
                        ChangeNodeType, ChangePhase, MergeNodes, MoveNode, SetGraph,
                        UpdateGraph)
 from .common import (VT, GraphT, ToolType, get_data,
@@ -53,6 +54,7 @@ def vertices_data() -> dict[VertexType, DrawPanelNodeType]:
         VertexType.H_BOX: {"text": "H box", "icon": (ShapeType.SQUARE, display_setting.effective_colors["hadamard"])},
         VertexType.Z_BOX: {"text": "Z box", "icon": (ShapeType.SQUARE, display_setting.effective_colors["z_spider"])},
         VertexType.W_OUTPUT: {"text": "W node", "icon": (ShapeType.TRIANGLE, display_setting.effective_colors["w_output"])},
+        VertexType.TRIANGLE_OUTPUT: {"text": "Triangle", "icon": (ShapeType.TRIANGLE, display_setting.effective_colors["hadamard"])},
         VertexType.BOUNDARY: {"text": "boundary", "icon": (ShapeType.CIRCLE, display_setting.effective_colors["w_input"])},
         VertexType.DUMMY: {"text": "Dummy", "icon": (ShapeType.CIRCLE, display_setting.effective_colors["dummy"])},
     }
@@ -208,6 +210,8 @@ class EditorBasePanel(BasePanel):
         for v in selection:
             if vertex_is_w(self.graph_scene.g.type(v)):
                 rem_vertices.append(get_w_partner(self.graph_scene.g, v))
+            elif vertex_is_triangle(self.graph_scene.g.type(v)):
+                rem_vertices.append(get_triangle_partner(self.graph_scene.g, v))
         if not rem_vertices and not selected_edges:
             return
         new_g = copy.deepcopy(self.graph_scene.g)
@@ -230,7 +234,7 @@ class EditorBasePanel(BasePanel):
         We will try to connect the vertex to an edge.
         """
         cmd: BaseCommand
-        if self.snap_vertex_edge and edges and self._curr_vty != VertexType.W_OUTPUT:
+        if self.snap_vertex_edge and edges and self._curr_vty not in (VertexType.W_OUTPUT, VertexType.TRIANGLE_OUTPUT):
             # Trying to snap vertex to an edge
             for it in edges:
                 e = it.e
@@ -252,6 +256,8 @@ class EditorBasePanel(BasePanel):
 
         if self._curr_vty == VertexType.W_OUTPUT:
             self.undo_stack.push(AddWNode(self.graph_view, x, y))
+        elif self._curr_vty == VertexType.TRIANGLE_OUTPUT:
+            self.undo_stack.push(AddTriangleNode(self.graph_view, x, y))
         else:
             self.undo_stack.push(AddNode(self.graph_view, x, y, self._curr_vty))
         self.play_sound_signal.emit(SFXEnum.THATS_A_SPIDER)
@@ -261,6 +267,14 @@ class EditorBasePanel(BasePanel):
             return True
         if graph.type(u) == VertexType.W_INPUT and len(graph.neighbors(u)) >= 2 or \
                 graph.type(v) == VertexType.W_INPUT and len(graph.neighbors(v)) >= 2:
+            return True
+        # Triangle nodes are intrinsically 1-in/1-out: block edges between
+        # partners (already linked by W_IO) and cap each half at 2 neighbours
+        # total (1 internal W_IO + 1 external).
+        if vertex_is_triangle(graph.type(u)) and get_triangle_partner(graph, u) == v:
+            return True
+        if vertex_is_triangle(graph.type(u)) and len(graph.neighbors(u)) >= 2 or \
+                vertex_is_triangle(graph.type(v)) and len(graph.neighbors(v)) >= 2:
             return True
         u_is_dummy = graph.type(u) == VertexType.DUMMY
         v_is_dummy = graph.type(v) == VertexType.DUMMY
@@ -319,7 +333,8 @@ class EditorBasePanel(BasePanel):
     def vert_double_clicked(self, v: VT) -> None:
         graph = self.graph
         old_variables = graph.var_registry.vars()
-        if graph.type(v) == VertexType.BOUNDARY or vertex_is_w(graph.type(v)):
+        if graph.type(v) == VertexType.BOUNDARY or vertex_is_w(graph.type(v)) \
+                or vertex_is_triangle(graph.type(v)):
             return None
         if graph.type(v) == VertexType.DUMMY:
             new_g = update_dummy_vertex_text(self, self.graph_scene.g, v)

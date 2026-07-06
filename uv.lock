@@ -1105,8 +1105,8 @@ wheels = [
 
 [[package]]
 name = "pyzx"
-version = "0.10.3"
-source = { registry = "https://pypi.org/simple" }
+version = "0.10.4"
+source = { git = "https://github.com/Fabrial-Research/pyzx.git?rev=v0.10.4-triangle.1#30d775f1de6e5dd135382dc3360c058a76555596" }
 dependencies = [
     { name = "ipywidgets" },
     { name = "lark" },
@@ -1114,10 +1114,6 @@ dependencies = [
     { name = "pyperclip" },
     { name = "tqdm" },
     { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/40/fce9ba05b9a874e486de4a2d9092898b219f75368ce758dd5a9a26428535/pyzx-0.10.3.tar.gz", hash = "sha256:8c9e2c2d7baddefaed5962e8dc6bc638d3ff678d0d7bb8ee6f4bfd0a79e912be", size = 530196, upload-time = "2026-06-01T14:55:06.857Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/b2/c89625790e919cb8bfa17d8131870c5ceccdbb44b517b8d7eec0fbf54304/pyzx-0.10.3-py3-none-any.whl", hash = "sha256:70915d35350aaa48161cf185979f48d225c10221570d40569214873d7ccd873c", size = 566325, upload-time = "2026-06-01T14:55:05.221Z" },
 ]
 
 [[package]]
@@ -1562,7 +1558,7 @@ requires-dist = [
     { name = "pyperclip", specifier = ">=1.11" },
     { name = "pyside6", specifier = ">=6.11" },
     { name = "pytest-qt", marker = "extra == 'test'" },
-    { name = "pyzx", specifier = ">=0.10.3" },
+    { name = "pyzx", git = "https://github.com/Fabrial-Research/pyzx.git?rev=v0.10.4-triangle.1" },
     { name = "ruff", marker = "extra == 'test'" },
     { name = "shapely", specifier = ">=2.1" },
     { name = "sphinx", marker = "extra == 'doc'", specifier = ">=9.1.0" },

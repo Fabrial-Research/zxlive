@@ -28,7 +28,8 @@ from PySide6.QtWidgets import QWidget, QGraphicsPathItem, QGraphicsTextItem, QGr
     QStyle, QStyleOptionGraphicsItem, QGraphicsSceneMouseEvent
 
 
-from pyzx.utils import VertexType, phase_to_s, get_w_partner, vertex_is_w, get_z_box_label
+from pyzx.utils import VertexType, phase_to_s, get_w_partner, vertex_is_w, get_z_box_label, \
+    vertex_is_triangle, get_triangle_partner
 
 from .common import VT, W_INPUT_OFFSET, GraphT, SCALE, pos_to_view, pos_from_view, get_settings_value
 from .settings import display_setting
@@ -55,6 +56,8 @@ DEFAULT_COLOR_KEY_BY_TYPE: dict[VertexType, str] = {
     VertexType.H_BOX: "hadamard",
     VertexType.W_INPUT: "w_input",
     VertexType.W_OUTPUT: "w_output",
+    VertexType.TRIANGLE_OUTPUT: "hadamard",
+    VertexType.TRIANGLE_INPUT: "w_input",
     VertexType.DUMMY: "dummy",
 }
 
@@ -65,6 +68,8 @@ PRESSED_COLOR_KEY_BY_TYPE: dict[VertexType, str] = {
     VertexType.H_BOX: "hadamard_pressed",
     VertexType.W_INPUT: "w_input_pressed",
     VertexType.W_OUTPUT: "w_output_pressed",
+    VertexType.TRIANGLE_OUTPUT: "hadamard_pressed",
+    VertexType.TRIANGLE_INPUT: "w_input_pressed",
     VertexType.DUMMY: "dummy_pressed",
 }
 
@@ -268,7 +273,13 @@ class VItem(QGraphicsPathItem):
             path.lineTo(0.25 * SCALE, -0.15 * SCALE)
             path.lineTo(-0.25 * SCALE, -0.15 * SCALE)
             path.closeSubpath()
-        elif self.ty in {VertexType.W_INPUT, VertexType.BOUNDARY, VertexType.DUMMY}:
+        elif self.ty == VertexType.TRIANGLE_OUTPUT:
+            path.moveTo(0, 0.2 * SCALE)
+            path.lineTo(0.25 * SCALE, -0.2 * SCALE)
+            path.lineTo(-0.25 * SCALE, -0.2 * SCALE)
+            path.closeSubpath()
+        elif self.ty in {VertexType.W_INPUT, VertexType.TRIANGLE_INPUT,
+                         VertexType.BOUNDARY, VertexType.DUMMY}:
             scale = 0.3 * SCALE
             path.addEllipse(-0.2 * scale, -0.2 * scale, 0.4 * scale, 0.4 * scale)
         else:
@@ -283,6 +294,11 @@ class VItem(QGraphicsPathItem):
             w_in = get_w_partner_vitem(self)
             if w_in:
                 angle = math.atan2(self.pos().x() - w_in.pos().x(), w_in.pos().y() - self.pos().y())
+                self.setRotation(math.degrees(angle))
+        elif self.ty == VertexType.TRIANGLE_OUTPUT:
+            tip = get_triangle_partner_vitem(self)
+            if tip:
+                angle = math.atan2(self.pos().x() - tip.pos().x(), tip.pos().y() - self.pos().y())
                 self.setRotation(math.degrees(angle))
         else:
             self.setRotation(0)
@@ -373,7 +389,7 @@ class VItem(QGraphicsPathItem):
         e.ignore()
 
     def _sync_w_partner_during_drag(self, e: QGraphicsSceneMouseEvent) -> bool:
-        """Keep W-partner geometry consistent while dragging.
+        """Keep W-partner and triangle-partner geometry consistent while dragging.
 
         Returns False when dragging should abort for this event.
         """
@@ -393,13 +409,33 @@ class VItem(QGraphicsPathItem):
                 e.ignore()
                 return False
             w_out.set_vitem_rotation()
+        elif self.ty == VertexType.TRIANGLE_OUTPUT:
+            tri_in = get_triangle_partner_vitem(self)
+            assert tri_in is not None
+            if self._last_pos is None:
+                self._last_pos = self.pos()
+            tri_in.setPos(tri_in.pos() + (self.pos() - self._last_pos))
+            self._last_pos = self.pos()
+            return True
+        elif self.ty == VertexType.TRIANGLE_INPUT:
+            tri_out = get_triangle_partner_vitem(self)
+            if tri_out is None:
+                e.ignore()
+                return False
+            tri_out.set_vitem_rotation()
         return True
 
     def _is_invalid_drag_target(self, it: QGraphicsItem) -> bool:
         """Whether an item should be skipped as a drag hover target."""
         if not it.sceneBoundingRect().intersects(self.sceneBoundingRect()):
             return True
-        return isinstance(it, VItem) and vertex_is_w(self.ty) and get_w_partner(self.g, self.v) == it.v
+        if not isinstance(it, VItem):
+            return False
+        if vertex_is_w(self.ty) and get_w_partner(self.g, self.v) == it.v:
+            return True
+        if vertex_is_triangle(self.ty) and get_triangle_partner(self.g, self.v) == it.v:
+            return True
+        return False
 
     def _update_drag_hover_target(self, scene: GraphScene) -> None:
         """Emit drag onto/off events when hover target changes."""
@@ -456,17 +492,21 @@ class VItem(QGraphicsPathItem):
         self._old_pos = None
 
     def _snap_w_input_partner_position(self) -> None:
-        """If this is W_INPUT, snap it to the rotated offset of its partner."""
-        if self.ty != VertexType.W_INPUT:
+        """If this is W_INPUT or TRIANGLE_INPUT, snap it to the rotated offset
+        of its body partner so the pair stays geometrically consistent."""
+        if self.ty == VertexType.W_INPUT:
+            body = get_w_partner_vitem(self)
+        elif self.ty == VertexType.TRIANGLE_INPUT:
+            body = get_triangle_partner_vitem(self)
+        else:
             return
-        w_out = get_w_partner_vitem(self)
-        assert w_out is not None
-        w_in_pos = w_out.pos() + QPointF(0, W_INPUT_OFFSET * SCALE)
-        w_in_pos = rotate_point(w_in_pos, w_out.pos(), w_out.rotation())
-        self.setPos(w_in_pos)
+        assert body is not None
+        tip_pos = body.pos() + QPointF(0, W_INPUT_OFFSET * SCALE)
+        tip_pos = rotate_point(tip_pos, body.pos(), body.rotation())
+        self.setPos(tip_pos)
 
     def _collect_moved_vertices(self, scene: GraphScene) -> list[VItem]:
-        """Collect moved selected vertices, including W partners when present."""
+        """Collect moved selected vertices, including W and triangle partners."""
         moved_vertices: list[VItem] = []
         for it in scene.selectedItems():
             if not isinstance(it, VItem):
@@ -474,6 +514,10 @@ class VItem(QGraphicsPathItem):
             moved_vertices.append(it)
             if vertex_is_w(it.ty):
                 partner = get_w_partner_vitem(it)
+                if partner:
+                    moved_vertices.append(partner)
+            elif vertex_is_triangle(it.ty):
+                partner = get_triangle_partner_vitem(it)
                 if partner:
                     moved_vertices.append(partner)
         return moved_vertices
@@ -710,6 +754,15 @@ def get_w_partner_vitem(vitem: VItem) -> Optional[VItem]:
     """Get the VItem of the partner of a w_in or w_out vertex."""
     assert vertex_is_w(vitem.ty)
     partner: int = get_w_partner(vitem.g, vitem.v)
+    if partner not in vitem.graph_scene.vertex_map:
+        return None
+    return vitem.graph_scene.vertex_map[partner]
+
+
+def get_triangle_partner_vitem(vitem: VItem) -> Optional[VItem]:
+    """Get the VItem of the partner (tip <-> body) of a triangle vertex."""
+    assert vertex_is_triangle(vitem.ty)
+    partner: int = get_triangle_partner(vitem.g, vitem.v)
     if partner not in vitem.graph_scene.vertex_map:
         return None
     return vitem.graph_scene.vertex_map[partner]
