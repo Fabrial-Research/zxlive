@@ -129,7 +129,9 @@ def find_unknown_tikz_styles(tikz: str) -> list[str]:
                      pyzx.tikz.synonyms_z_box, pyzx.tikz.synonyms_none,
                      pyzx.tikz.synonyms_dummy,
                      pyzx.tikz.synonyms_triangle_input,
-                     pyzx.tikz.synonyms_triangle_output):
+                     pyzx.tikz.synonyms_triangle_output,
+                     pyzx.tikz.synonyms_triangle_inverse_input,
+                     pyzx.tikz.synonyms_triangle_inverse_output):
         known.update(name.lower() for name in syn_list)
 
     unknown: list[str] = []

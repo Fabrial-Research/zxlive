@@ -20,7 +20,7 @@ from pyzx.graph.jsonparser import string_to_phase
 from zxlive.sfx import SFXEnum
 
 from .base_panel import BasePanel, ToolbarSection
-from .commands import (BaseCommand, AddEdge, AddEdges, AddNode, AddNodeSnapped, AddWNode, AddTriangleNode, ChangeEdgeColor, ChangeEdgeCurve,
+from .commands import (BaseCommand, AddEdge, AddEdges, AddNode, AddNodeSnapped, AddWNode, AddTriangleNode, AddTriangleInverseNode, ChangeEdgeColor, ChangeEdgeCurve,
                        ChangeNodeType, ChangePhase, MergeNodes, MoveNode, SetGraph,
                        UpdateGraph)
 from .common import (VT, GraphT, ToolType, get_data,
@@ -55,6 +55,7 @@ def vertices_data() -> dict[VertexType, DrawPanelNodeType]:
         VertexType.Z_BOX: {"text": "Z box", "icon": (ShapeType.SQUARE, display_setting.effective_colors["z_spider"])},
         VertexType.W_OUTPUT: {"text": "W node", "icon": (ShapeType.TRIANGLE, display_setting.effective_colors["w_output"])},
         VertexType.TRIANGLE_OUTPUT: {"text": "Triangle", "icon": (ShapeType.TRIANGLE, display_setting.effective_colors["hadamard"])},
+        VertexType.TRIANGLE_INVERSE_OUTPUT: {"text": "Triangle inverse", "icon": (ShapeType.TRIANGLE, display_setting.effective_colors["hadamard"])},
         VertexType.BOUNDARY: {"text": "boundary", "icon": (ShapeType.CIRCLE, display_setting.effective_colors["w_input"])},
         VertexType.DUMMY: {"text": "Dummy", "icon": (ShapeType.CIRCLE, display_setting.effective_colors["dummy"])},
     }
@@ -234,7 +235,7 @@ class EditorBasePanel(BasePanel):
         We will try to connect the vertex to an edge.
         """
         cmd: BaseCommand
-        if self.snap_vertex_edge and edges and self._curr_vty not in (VertexType.W_OUTPUT, VertexType.TRIANGLE_OUTPUT):
+        if self.snap_vertex_edge and edges and self._curr_vty not in (VertexType.W_OUTPUT, VertexType.TRIANGLE_OUTPUT, VertexType.TRIANGLE_INVERSE_OUTPUT):
             # Trying to snap vertex to an edge
             for it in edges:
                 e = it.e
@@ -258,6 +259,8 @@ class EditorBasePanel(BasePanel):
             self.undo_stack.push(AddWNode(self.graph_view, x, y))
         elif self._curr_vty == VertexType.TRIANGLE_OUTPUT:
             self.undo_stack.push(AddTriangleNode(self.graph_view, x, y))
+        elif self._curr_vty == VertexType.TRIANGLE_INVERSE_OUTPUT:
+            self.undo_stack.push(AddTriangleInverseNode(self.graph_view, x, y))
         else:
             self.undo_stack.push(AddNode(self.graph_view, x, y, self._curr_vty))
         self.play_sound_signal.emit(SFXEnum.THATS_A_SPIDER)

@@ -367,6 +367,31 @@ class AddTriangleNode(BaseCommand):
 
 
 @dataclass
+class AddTriangleInverseNode(BaseCommand):
+    """Adds a new triangle-inverse node (tip + body pair) at a given position."""
+    x: float
+    y: float
+
+    _added_input_vert: Optional[VT] = field(default=None, init=False)
+    _added_output_vert: Optional[VT] = field(default=None, init=False)
+
+    def undo(self) -> None:
+        assert self._added_input_vert is not None
+        assert self._added_output_vert is not None
+        self.g.remove_vertex(self._added_input_vert)
+        self.g.remove_vertex(self._added_output_vert)
+        self.update_graph_view()
+
+    def redo(self) -> None:
+        y = round(self.y * display_setting.SNAP_DIVISION) / display_setting.SNAP_DIVISION
+        x = round(self.x * display_setting.SNAP_DIVISION) / display_setting.SNAP_DIVISION
+        self._added_input_vert = self.g.add_vertex(VertexType.TRIANGLE_INVERSE_INPUT, y - W_INPUT_OFFSET, self.x)
+        self._added_output_vert = self.g.add_vertex(VertexType.TRIANGLE_INVERSE_OUTPUT, y, x)
+        self.g.add_edge((self._added_input_vert, self._added_output_vert), EdgeType.W_IO)
+        self.update_graph_view()
+
+
+@dataclass
 class AddEdge(BaseCommand):
     """Adds an edge between two spiders."""
     u: VT

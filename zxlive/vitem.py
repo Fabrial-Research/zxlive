@@ -29,7 +29,7 @@ from PySide6.QtWidgets import QWidget, QGraphicsPathItem, QGraphicsTextItem, QGr
 
 
 from pyzx.utils import VertexType, phase_to_s, get_w_partner, vertex_is_w, get_z_box_label, \
-    vertex_is_triangle, get_triangle_partner
+    vertex_is_triangle, vertex_is_triangle_input, vertex_is_triangle_output, get_triangle_partner
 
 from .common import VT, W_INPUT_OFFSET, GraphT, SCALE, pos_to_view, pos_from_view, get_settings_value
 from .settings import display_setting
@@ -58,6 +58,8 @@ DEFAULT_COLOR_KEY_BY_TYPE: dict[VertexType, str] = {
     VertexType.W_OUTPUT: "w_output",
     VertexType.TRIANGLE_OUTPUT: "hadamard",
     VertexType.TRIANGLE_INPUT: "w_input",
+    VertexType.TRIANGLE_INVERSE_OUTPUT: "hadamard",
+    VertexType.TRIANGLE_INVERSE_INPUT: "w_input",
     VertexType.DUMMY: "dummy",
 }
 
@@ -70,6 +72,8 @@ PRESSED_COLOR_KEY_BY_TYPE: dict[VertexType, str] = {
     VertexType.W_OUTPUT: "w_output_pressed",
     VertexType.TRIANGLE_OUTPUT: "hadamard_pressed",
     VertexType.TRIANGLE_INPUT: "w_input_pressed",
+    VertexType.TRIANGLE_INVERSE_OUTPUT: "hadamard_pressed",
+    VertexType.TRIANGLE_INVERSE_INPUT: "w_input_pressed",
     VertexType.DUMMY: "dummy_pressed",
 }
 
@@ -273,12 +277,13 @@ class VItem(QGraphicsPathItem):
             path.lineTo(0.25 * SCALE, -0.15 * SCALE)
             path.lineTo(-0.25 * SCALE, -0.15 * SCALE)
             path.closeSubpath()
-        elif self.ty == VertexType.TRIANGLE_OUTPUT:
+        elif vertex_is_triangle_output(self.ty):
             path.moveTo(0, 0.2 * SCALE)
             path.lineTo(0.25 * SCALE, -0.2 * SCALE)
             path.lineTo(-0.25 * SCALE, -0.2 * SCALE)
             path.closeSubpath()
         elif self.ty in {VertexType.W_INPUT, VertexType.TRIANGLE_INPUT,
+                         VertexType.TRIANGLE_INVERSE_INPUT,
                          VertexType.BOUNDARY, VertexType.DUMMY}:
             scale = 0.3 * SCALE
             path.addEllipse(-0.2 * scale, -0.2 * scale, 0.4 * scale, 0.4 * scale)
@@ -295,7 +300,7 @@ class VItem(QGraphicsPathItem):
             if w_in:
                 angle = math.atan2(self.pos().x() - w_in.pos().x(), w_in.pos().y() - self.pos().y())
                 self.setRotation(math.degrees(angle))
-        elif self.ty == VertexType.TRIANGLE_OUTPUT:
+        elif vertex_is_triangle_output(self.ty):
             tip = get_triangle_partner_vitem(self)
             if tip:
                 angle = math.atan2(self.pos().x() - tip.pos().x(), tip.pos().y() - self.pos().y())
@@ -313,6 +318,14 @@ class VItem(QGraphicsPathItem):
         assert hasattr(option, "state")
         option.state &= ~QStyle.StateFlag.State_Selected
         super().paint(painter, option, widget)
+        if self.ty == VertexType.TRIANGLE_INVERSE_OUTPUT:
+            # The inverse "bar" marker distinguishes it from the plain triangle.
+            painter.save()
+            pen = QPen(QColor(BLACK))
+            pen.setWidthF(0.03 * SCALE)
+            painter.setPen(pen)
+            painter.drawLine(QPointF(-0.13 * SCALE, 0.0), QPointF(0.13 * SCALE, 0.0))
+            painter.restore()
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
         # Snap items to grid on movement by intercepting the position-change
@@ -409,7 +422,7 @@ class VItem(QGraphicsPathItem):
                 e.ignore()
                 return False
             w_out.set_vitem_rotation()
-        elif self.ty == VertexType.TRIANGLE_OUTPUT:
+        elif vertex_is_triangle_output(self.ty):
             tri_in = get_triangle_partner_vitem(self)
             assert tri_in is not None
             if self._last_pos is None:
@@ -417,7 +430,7 @@ class VItem(QGraphicsPathItem):
             tri_in.setPos(tri_in.pos() + (self.pos() - self._last_pos))
             self._last_pos = self.pos()
             return True
-        elif self.ty == VertexType.TRIANGLE_INPUT:
+        elif vertex_is_triangle_input(self.ty):
             tri_out = get_triangle_partner_vitem(self)
             if tri_out is None:
                 e.ignore()
@@ -496,7 +509,7 @@ class VItem(QGraphicsPathItem):
         of its body partner so the pair stays geometrically consistent."""
         if self.ty == VertexType.W_INPUT:
             body = get_w_partner_vitem(self)
-        elif self.ty == VertexType.TRIANGLE_INPUT:
+        elif vertex_is_triangle_input(self.ty):
             body = get_triangle_partner_vitem(self)
         else:
             return
