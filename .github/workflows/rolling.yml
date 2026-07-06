@@ -24,7 +24,7 @@ jobs:
         python-version: [ '3.13' ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -46,7 +46,7 @@ jobs:
           require-valid-signature: "false"
 
       - name: Upload Binary Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compiled-binaries-${{ matrix.os }}
           path: zxlive_*
@@ -56,7 +56,7 @@ jobs:
     needs: build_rolling
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Update Rolling Tag
         run: |
           git config user.name "github-actions[bot]"
@@ -65,7 +65,7 @@ jobs:
           git push origin -f rolling
 
       - name: Download release artifacts only
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: compiled-binaries-*
           path: release_assets
@@ -75,7 +75,7 @@ jobs:
         run: ls -la release_assets
 
       - name: Publish rolling release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: rolling
           prerelease: true
