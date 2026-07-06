@@ -302,13 +302,7 @@ class VItem(QGraphicsPathItem):
         # event and returning a new position
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange and not self.is_animated:
             assert isinstance(value, QPointF)
-            if self.ty == VertexType.W_INPUT:
-                x = value.x()
-                y = value.y()
-            else:
-                x = round(value.x() / display_setting.SNAP) * display_setting.SNAP
-                y = round(value.y() / display_setting.SNAP) * display_setting.SNAP
-            return QPointF(x, y)
+            return self._snap_position(value)
 
         # When selecting/deselecting items, we move them to the front/back
         if change == QGraphicsItem.GraphicsItemChange.ItemSelectedChange:
@@ -320,18 +314,31 @@ class VItem(QGraphicsPathItem):
         # Note that the position and selected values are already updated when
         # this event fires.
         if change in (QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged, QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged):
-            # Skip refresh when the scene is performing a bulk graph update
-            # (it will refresh all affected items in a single pass afterwards).
-            if not self.is_animated and not self.graph_scene.is_bulk_updating:
-                self.refresh()
-
-            if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
-                scene = self.scene()
-                if TYPE_CHECKING:
-                    assert isinstance(scene, GraphScene)
-                scene.selection_changed_custom.emit()
+            self._on_selected_or_position_changed(change)
 
         return super().itemChange(change, value)
+
+    def _snap_position(self, value: QPointF) -> QPointF:
+        """Snap a proposed position to the display grid (W inputs move freely)."""
+        if self.ty == VertexType.W_INPUT:
+            return QPointF(value.x(), value.y())
+        x = round(value.x() / display_setting.SNAP) * display_setting.SNAP
+        y = round(value.y() / display_setting.SNAP) * display_setting.SNAP
+        return QPointF(x, y)
+
+    def _on_selected_or_position_changed(self, change: QGraphicsItem.GraphicsItemChange) -> None:
+        """Refresh the item (and notify the scene on selection changes) after a
+        selection- or position-has-changed event."""
+        # Skip refresh when the scene is performing a bulk graph update
+        # (it will refresh all affected items in a single pass afterwards).
+        if not self.is_animated and not self.graph_scene.is_bulk_updating:
+            self.refresh()
+
+        if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+            scene = self.scene()
+            if TYPE_CHECKING:
+                assert isinstance(scene, GraphScene)
+            scene.selection_changed_custom.emit()
 
     def mouseDoubleClickEvent(self, e: QGraphicsSceneMouseEvent) -> None:
         super().mouseDoubleClickEvent(e)

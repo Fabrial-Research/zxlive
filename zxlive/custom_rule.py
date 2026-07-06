@@ -273,7 +273,7 @@ def _is_valid_boolean_phase(phase: ParameterValue) -> bool:
         return False
     if isinstance(phase, float):
         return phase % 2 == 0 or phase % 2 == 1
-    return phase_is_pauli(phase)
+    return bool(phase_is_pauli(phase))
 
 
 def _validate_symbolic_parameter(params: Dict[Var, ParameterValue], var: Var, value: ParameterValue) -> None:

@@ -47,6 +47,8 @@ extra_args =
     --nofollow-import-to=tkinter
     --noinclude-numba-mode=nofollow
     --include-package-data=zxlive.icons
+    --include-package-data=zxlive.tooltips
+    --include-package-data=zxlive.sfx
     --macos-create-app-bundle
 
 [buildozer]

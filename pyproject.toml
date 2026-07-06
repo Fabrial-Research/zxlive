@@ -10,7 +10,7 @@ name = "zxlive"
 version = "1.0.0"
 description = "An interactive tool for the ZX-calculus"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.13"
 license = { file = "LICENSE" }
 authors = [
     { name = "ZXLive contributors" },
@@ -22,23 +22,19 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering"
 ]
 dependencies = [
-    "PySide6 >= 6.7.2",
-    "pyzx >= 0.10.0",
-    "networkx",
-    "numpy",
-    "shapely",
-    "pyperclip",
-    "imageio",
-    "packaging",
-    "matplotlib>=3.3",
+    "PySide6 >= 6.11",
+    "pyzx >= 0.10.3",
+    "networkx >= 3.6",
+    "numpy >= 2.5",
+    "shapely >= 2.1",
+    "pyperclip >= 1.11",
+    "imageio >= 2.37",
+    "packaging >= 26",
+    "matplotlib >= 3.11",
 ]
 
 [project.optional-dependencies]
@@ -66,6 +62,16 @@ packages = [
     "zxlive"
 ]
 
+# Ship non-Python assets inside the wheel. Without this, `pip install zxlive`
+# produces a wheel with no icons/tooltips/sfx and the app crashes on startup
+# loading them via `get_data(...)`. Keep in sync with MANIFEST.in (sdist).
+[tool.setuptools.package-data]
+zxlive = [
+    "icons/*",
+    "tooltips/*",
+    "sfx/*",
+]
+
 [project.gui-scripts]
 zxlive = "zxlive.app:main"
 
@@ -88,6 +94,12 @@ ignore = [
     "E501",
     "E721", # False positive: triggers on .type() method calls, not just type() builtin
 ]
+# `complexipy` is a separate complexity linter that reads `# noqa: complexipy`
+# directives from the source. Declaring it external stops ruff from flagging
+# those directives as invalid while leaving them functional for complexipy.
+external = [
+    "complexipy",
+]
 
 [tool.ruff.lint.per-file-ignores]
 "test/*" = ["F401"]
@@ -96,7 +108,7 @@ ignore = [
 combine-as-imports = true
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

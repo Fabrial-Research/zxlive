@@ -246,27 +246,37 @@ class ProofPanel(BasePanel):
         source, target = self.graph.edge_st(edges[0])
         source_type, target_type = self.graph.type(source), self.graph.type(target)
         edge_type = self.graph.edge_type(edges[0])
-        if (edge_type == EdgeType.HADAMARD and vertex_is_z_like(source_type) and vertex_is_z_like(target_type)) or \
-           (edge_type == EdgeType.SIMPLE and vertex_is_z_like(source_type) and target_type == VertexType.X) or \
-           (edge_type == EdgeType.SIMPLE and source_type == VertexType.X and vertex_is_z_like(target_type)):
-            new_g = copy.deepcopy(self.graph)
-            num_edges = len(edges)
-            # Remove even number of edges
-            if num_edges % 2 != 0:
-                num_edges -= 1
-            if num_edges == 0:
-                return False
-            # Collect edge items for animation before removing edges. The diff removes the
-            # highest-indexed items, so animate the same ones from the end of the dict.
-            edge_items = [eitem for eitem in self.graph_scene.edge_map[edges[0]].values()]
-            for _ in range(num_edges):  # TODO: This doesn't take into account the global scalar factor.
-                new_g.remove_edge(edges[0])
-            # Animate edges fading out
-            anim = anims.hopf(edge_items[-num_edges:])
-            cmd = AddRewriteStep(self.graph_view, new_g, self.step_view, "Remove parallel edges")
-            self.undo_stack.push(cmd, anim_before=anim)
-            return True
-        return False
+        if not self._hopf_applicable(edge_type, source_type, target_type):
+            return False
+
+        num_edges = len(edges)
+        # Remove even number of edges
+        if num_edges % 2 != 0:
+            num_edges -= 1
+        if num_edges == 0:
+            return False
+
+        new_g = copy.deepcopy(self.graph)
+        # Collect edge items for animation before removing edges. The diff removes the
+        # highest-indexed items, so animate the same ones from the end of the dict.
+        edge_items = [eitem for eitem in self.graph_scene.edge_map[edges[0]].values()]
+        for _ in range(num_edges):  # TODO: This doesn't take into account the global scalar factor.
+            new_g.remove_edge(edges[0])
+        # Animate edges fading out
+        anim = anims.hopf(edge_items[-num_edges:])
+        cmd = AddRewriteStep(self.graph_view, new_g, self.step_view, "Remove parallel edges")
+        self.undo_stack.push(cmd, anim_before=anim)
+        return True
+
+    @staticmethod
+    def _hopf_applicable(edge_type: EdgeType, source_type: VertexType, target_type: VertexType) -> bool:
+        """Whether a Hopf (parallel-edge cancellation) rewrite applies to an edge
+        of ``edge_type`` between spiders of the given types."""
+        return (
+            (edge_type == EdgeType.HADAMARD and vertex_is_z_like(source_type) and vertex_is_z_like(target_type))
+            or (edge_type == EdgeType.SIMPLE and vertex_is_z_like(source_type) and target_type == VertexType.X)
+            or (edge_type == EdgeType.SIMPLE and source_type == VertexType.X and vertex_is_z_like(target_type))
+        )
 
     def _magic_identity(self, trace: WandTrace) -> bool:
         if len(trace.hit) != 1 or not all(isinstance(item, EItem) for item in trace.hit):
