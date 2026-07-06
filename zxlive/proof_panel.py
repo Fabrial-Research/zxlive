@@ -506,8 +506,8 @@ class ProofPanel(BasePanel):
             set_z_box_label(new_g, second, phase)
         else:
             old_phase = new_g.phase(v)
-            new_g.set_phase(first, old_phase - phase)
-            new_g.set_phase(second, phase)
+            new_g.set_phase(first, cast(FractionLike, old_phase - phase))
+            new_g.set_phase(second, cast(FractionLike, phase))
 
         self._finalize_unfuse(v, new_g)
 

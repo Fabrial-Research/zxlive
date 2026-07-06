@@ -247,7 +247,7 @@ class EditorBasePanel(BasePanel):
                 self.undo_stack.push(cmd)
                 g = cmd.g
                 group = QParallelAnimationGroup()
-                for e in [next(g.edges(cmd.s, cmd.added_vert)), next(g.edges(cmd.t, cmd.added_vert))]:
+                for e in [next(iter(g.edges(cmd.s, cmd.added_vert))), next(iter(g.edges(cmd.t, cmd.added_vert)))]:
                     eitem = self.graph_scene.edge_map[e][0]
                     anim = animations.edge_thickness(eitem, 3, 400,
                                                      QEasingCurve(QEasingCurve.Type.InCubic), start=7)
@@ -268,16 +268,16 @@ class EditorBasePanel(BasePanel):
     def _is_invalid_edge(self, graph: GraphT, u: VT, v: VT) -> bool:
         if vertex_is_w(graph.type(u)) and get_w_partner(graph, u) == v:
             return True
-        if graph.type(u) == VertexType.W_INPUT and len(graph.neighbors(u)) >= 2 or \
-                graph.type(v) == VertexType.W_INPUT and len(graph.neighbors(v)) >= 2:
+        if graph.type(u) == VertexType.W_INPUT and len(list(graph.neighbors(u))) >= 2 or \
+                graph.type(v) == VertexType.W_INPUT and len(list(graph.neighbors(v))) >= 2:
             return True
         # Triangle nodes are intrinsically 1-in/1-out: block edges between
         # partners (already linked by W_IO) and cap each half at 2 neighbours
         # total (1 internal W_IO + 1 external).
         if vertex_is_triangle(graph.type(u)) and get_triangle_partner(graph, u) == v:
             return True
-        if vertex_is_triangle(graph.type(u)) and len(graph.neighbors(u)) >= 2 or \
-                vertex_is_triangle(graph.type(v)) and len(graph.neighbors(v)) >= 2:
+        if vertex_is_triangle(graph.type(u)) and len(list(graph.neighbors(u))) >= 2 or \
+                vertex_is_triangle(graph.type(v)) and len(list(graph.neighbors(v))) >= 2:
             return True
         u_is_dummy = graph.type(u) == VertexType.DUMMY
         v_is_dummy = graph.type(v) == VertexType.DUMMY

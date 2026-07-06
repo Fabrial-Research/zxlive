@@ -4,7 +4,7 @@ import copy
 from collections import namedtuple
 from dataclasses import dataclass, field
 from fractions import Fraction
-from typing import Callable, Iterable, Optional, Set, Union
+from typing import Callable, Iterable, Optional, Set, Union, cast
 
 from PySide6.QtCore import QModelIndex
 from PySide6.QtGui import QUndoCommand
@@ -517,7 +517,7 @@ class ChangePhase(BaseCommand):
         if self.g.type(self.v) == VertexType.Z_BOX:
             set_z_box_label(self.g, self.v, self._old_phase)
         else:
-            self.g.set_phase(self.v, self._old_phase)
+            self.g.set_phase(self.v, cast(Union[Fraction, int, Poly], self._old_phase))
         self.update_graph_view()
 
     def redo(self) -> None:
@@ -526,7 +526,7 @@ class ChangePhase(BaseCommand):
             set_z_box_label(self.g, self.v, self.new_phase)
         else:
             self._old_phase = self.g.phase(self.v)
-            self.g.set_phase(self.v, self.new_phase)
+            self.g.set_phase(self.v, cast(Union[Fraction, int, Poly], self.new_phase))
         self.update_graph_view()
 
 

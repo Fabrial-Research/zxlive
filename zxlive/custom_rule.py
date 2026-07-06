@@ -322,9 +322,9 @@ def filter_matchings_if_symbolic_compatible(matchings: list[Dict], left: nx.Mult
 
 def to_networkx(graph: GraphT) -> nx.MultiGraph:
     G = nx.MultiGraph()
-    v_data = {v: {"type": graph.type(v),
-                  "phase": graph.phase(v), }
-              for v in graph.vertices()}
+    v_data: dict[VT, dict[str, Any]] = {v: {"type": graph.type(v),
+                                            "phase": graph.phase(v), }
+                                        for v in graph.vertices()}
     for i, input_vertex in enumerate(graph.inputs()):
         v_data[input_vertex]["boundary_index"] = f'input_{i}'
     for i, output_vertex in enumerate(graph.outputs()):

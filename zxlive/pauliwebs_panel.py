@@ -13,7 +13,7 @@ from zxlive.graphview import GraphView
 
 from .base_panel import BasePanel, ToolbarSection
 from .commands import UpdateGraph
-from .common import ET, GraphT, get_settings_value
+from .common import ET, VT, GraphT, get_settings_value
 from .dialogs import show_error_msg
 from .graphscene import GraphScene
 
@@ -90,8 +90,8 @@ class PauliWebsPanel(BasePanel):
         # Store the webs
         self._pauli_webs = stabs + regions
 
-        inputs = ()
-        outputs = ()
+        inputs: tuple[VT, ...] = ()
+        outputs: tuple[VT, ...] = ()
         try:
             self.graph.auto_detect_io()
             inputs = self.graph.inputs()

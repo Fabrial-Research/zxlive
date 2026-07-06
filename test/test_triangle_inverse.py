@@ -21,7 +21,7 @@ class _FakeGraphView:
     """Minimal stub satisfying BaseCommand's interface."""
     def __init__(self) -> None:
         self.graph_scene = _FakeGraphScene()
-        self._last_graph = None
+        self._last_graph: GraphT | None = None
 
     def update_graph(self, g: GraphT, select_new: bool = False) -> None:  # type: ignore[override]
         self._last_graph = g
