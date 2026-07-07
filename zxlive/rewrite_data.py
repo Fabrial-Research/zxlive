@@ -346,6 +346,21 @@ rules_basic: dict[str, RewriteData] = {
         "rule": simplify.bialg_op_simp,
         "type": MATCH_COMPOUND,
     },
+    'zw_bialgebra': {
+        "text": "Z-W bialgebra",
+        "tooltip": "Expand a phase-free Z-spider connected to a W node's input "
+                   "into the complete bipartite W/Z bialgebra form",
+        "rule": simplify.zw_bialg_simp,
+        "type": MATCH_DOUBLE,
+        "repeat_rule_application": False,
+    },
+    'zw_bialgebra_op': {
+        "text": "Z-W bialgebra (opposite direction)",
+        "tooltip": "Collapse a complete bipartite W/Z region back to a single "
+                   "Z-spider connected to a W node",
+        "rule": simplify.zw_bialg_op_simp,
+        "type": MATCH_COMPOUND,
+    },
     "euler": {
         "text": "Decompose Hadamard",
         "tooltip": "Expands a Hadamard-edge into its component spiders using its Euler decomposition",

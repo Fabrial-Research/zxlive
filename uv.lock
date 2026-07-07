@@ -1106,7 +1106,7 @@ wheels = [
 [[package]]
 name = "pyzx"
 version = "0.10.4"
-source = { git = "https://github.com/Fabrial-Research/pyzx.git?rev=v0.10.4-triangle.1#30d775f1de6e5dd135382dc3360c058a76555596" }
+source = { git = "https://github.com/Fabrial-Research/pyzx.git?rev=v0.10.4-zxw.1#bfa196cfb28671041593869ee88dc492211136b9" }
 dependencies = [
     { name = "ipywidgets" },
     { name = "lark" },
@@ -1558,7 +1558,7 @@ requires-dist = [
     { name = "pyperclip", specifier = ">=1.11" },
     { name = "pyside6", specifier = ">=6.11" },
     { name = "pytest-qt", marker = "extra == 'test'" },
-    { name = "pyzx", git = "https://github.com/Fabrial-Research/pyzx.git?rev=v0.10.4-triangle.1" },
+    { name = "pyzx", git = "https://github.com/Fabrial-Research/pyzx.git?rev=v0.10.4-zxw.1" },
     { name = "ruff", marker = "extra == 'test'" },
     { name = "shapely", specifier = ">=2.1" },
     { name = "sphinx", marker = "extra == 'doc'", specifier = ">=9.1.0" },
